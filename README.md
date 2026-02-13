@@ -2,6 +2,9 @@
 
 An AI-powered tool designed to evaluate GitHub profiles for recruitment potential, providing detailed scoring, risk assessment, and actionable growth insights.
 
+## 🎥 Demo Video
+[Watch the Demo on Google Drive](https://drive.google.com/drive/folders/11hz2kRZ6f2BVnDah6B9w4ksk8AaajB49?usp=drive_link)
+
 ## ✨ Key Features
 *   **Smart Scoring System**: Calculates an overall "Employability Score" based on code quality, consistency, and impact.
 *   **Recruiter Verdict**: AI-generated summary (Strong Hire, Hire, Maybe, Risky) mimicking a technical recruiter's perspective.
