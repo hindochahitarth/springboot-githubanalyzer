@@ -167,6 +167,7 @@ public class AnalysisResponse {
         private List<String> pinnedRepoSummary;
         private List<String> topRepoSummary;
         private String lastActivityDate; // ISO 8601 timestamp from GitHub API
+        private String createdAt; // ISO 8601 timestamp from GitHub API
     }
     
     @Data
@@ -234,6 +235,7 @@ public class AnalysisResponse {
         private int currentScore;
         private int projectedScore;
         private String projectedGrade;
+        private String focusArea; // Added field
         private String message;
     }
     

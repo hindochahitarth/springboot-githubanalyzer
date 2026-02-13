@@ -95,15 +95,7 @@ export default function DashboardPage() {
                                 </div>
                             )}
 
-                            {/* Last Commit Recency - FINAL POLISH */}
-                            {data.lastCommitRecency && (
-                                <div className={`mt-2 text-sm font-semibold ${data.lastCommitRecency.includes('✅') ? 'text-green-600' :
-                                        data.lastCommitRecency.includes('⚠') ? 'text-yellow-600' :
-                                            'text-red-600'
-                                    }`}>
-                                    {data.lastCommitRecency}
-                                </div>
-                            )}
+
                         </div>
                     </div>
                 </div>
@@ -205,82 +197,63 @@ export default function DashboardPage() {
                                 </div>
                             )}
 
-                            {/* Activity Trend */}
-                            {data.activityTrend && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <p className="text-blue-800 font-semibold">{data.activityTrend}</p>
-                                </div>
-                            )}
+                            {/* Portfolio Risk Summary - GROUPED WARNINGS */}
+                            {(data.contributionConsistency || data.engineeringMaturity || data.languageFocus ||
+                                data.commitQuality || data.repositoryNoiseCount > 0 || data.recruiterRiskSummary) && (
+                                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                                        <h4 className="font-semibold text-orange-900 mb-3">⚠ Portfolio Risk Summary</h4>
+                                        <div className="space-y-2 text-sm">
+                                            {/* 1. Recruiter Risk Summary (First) */}
+                                            {data.recruiterRiskSummary && (
+                                                <div className={`flex items-start gap-2 font-semibold ${data.recruiterRiskSummary.includes('High') ? 'text-red-700' :
+                                                    data.recruiterRiskSummary.includes('Medium') ? 'text-orange-700' :
+                                                        'text-green-700'
+                                                    }`}>
+                                                    <span>•</span>
+                                                    <span>{data.recruiterRiskSummary}</span>
+                                                </div>
+                                            )}
 
-                            {/* Contribution Consistency - MATURITY FEATURE */}
-                            {data.contributionConsistency && (
-                                <div className={`border rounded-lg p-3 ${data.contributionConsistency.includes('Highly Consistent') ? 'bg-green-50 border-green-200' :
-                                    data.contributionConsistency.includes('Moderate') ? 'bg-yellow-50 border-yellow-200' :
-                                        data.contributionConsistency.includes('Inconsistent') ? 'bg-orange-50 border-orange-200' :
-                                            'bg-red-50 border-red-200'
-                                    }`}>
-                                    <p className={`font-semibold ${data.contributionConsistency.includes('Highly Consistent') ? 'text-green-800' :
-                                        data.contributionConsistency.includes('Moderate') ? 'text-yellow-800' :
-                                            data.contributionConsistency.includes('Inconsistent') ? 'text-orange-800' :
-                                                'text-red-800'
-                                        }`}>{data.contributionConsistency}</p>
-                                </div>
-                            )}
+                                            {/* 2. Engineering Maturity */}
+                                            {data.engineeringMaturity && (
+                                                <div className={`flex items-start gap-2 ${data.engineeringMaturity.includes('Production-Ready') ? 'text-green-700' :
+                                                    data.engineeringMaturity.includes('Developing') ? 'text-blue-700' :
+                                                        'text-gray-700'
+                                                    }`}>
+                                                    <span>•</span>
+                                                    <span>{data.engineeringMaturity}</span>
+                                                </div>
+                                            )}
 
-                            {/* Engineering Maturity - MATURITY FEATURE */}
-                            {data.engineeringMaturity && (
-                                <div className={`border rounded-lg p-3 ${data.engineeringMaturity.includes('Production-Ready') ? 'bg-green-50 border-green-200' :
-                                    data.engineeringMaturity.includes('Developing') ? 'bg-blue-50 border-blue-200' :
-                                        'bg-gray-50 border-gray-200'
-                                    }`}>
-                                    <p className={`font-semibold ${data.engineeringMaturity.includes('Production-Ready') ? 'text-green-800' :
-                                        data.engineeringMaturity.includes('Developing') ? 'text-blue-800' :
-                                            'text-gray-800'
-                                        }`}>{data.engineeringMaturity}</p>
-                                </div>
-                            )}
+                                            {/* 3. Low Project Impact (New) */}
+                                            {scoreBreakdown.projectImpact < 30 && (
+                                                <div className="flex items-start gap-2 text-red-700">
+                                                    <span>•</span>
+                                                    <span>Low project impact ({scoreBreakdown.projectImpact}/100)</span>
+                                                </div>
+                                            )}
 
-                            {/* Language Focus - MATURITY FEATURE */}
-                            {data.languageFocus && (
-                                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                                    <p className="text-purple-800 font-semibold">{data.languageFocus}</p>
-                                </div>
-                            )}
+                                            {/* 4. Repository Noise (Incomplete Repos) */}
+                                            {data.repositoryNoiseCount !== undefined && data.repositoryNoiseCount > 0 && (
+                                                <div className="flex items-start gap-2 text-orange-700">
+                                                    <span>•</span>
+                                                    <span>{data.repositoryNoiseCount} repositories appear to be practice/demo projects</span>
+                                                </div>
+                                            )}
 
-                            {/* Commit Quality - MATURITY FEATURE */}
-                            {data.commitQuality && (
-                                <div className={`border rounded-lg p-3 ${data.commitQuality.includes('Healthy') ? 'bg-green-50 border-green-200' :
-                                    data.commitQuality.includes('Shallow') ? 'bg-red-50 border-red-200' :
-                                        'bg-blue-50 border-blue-200'
-                                    }`}>
-                                    <p className={`font-semibold ${data.commitQuality.includes('Healthy') ? 'text-green-800' :
-                                        data.commitQuality.includes('Shallow') ? 'text-red-800' :
-                                            'text-blue-800'
-                                        }`}>{data.commitQuality}</p>
-                                </div>
-                            )}
-
-                            {/* Repository Noise - MATURITY FEATURE */}
-                            {data.repositoryNoiseCount !== undefined && data.repositoryNoiseCount > 0 && (
-                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                                    <p className="text-orange-800 font-semibold">
-                                        ⚠ {data.repositoryNoiseCount} repositories appear to be practice/demo projects with low completeness
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Recruiter Risk Summary */}
-                            {data.recruiterRiskSummary && (
-                                <div className={`border rounded-lg p-3 ${data.recruiterRiskSummary.includes('High') ? 'bg-red-50 border-red-200' :
-                                    data.recruiterRiskSummary.includes('Moderate') ? 'bg-yellow-50 border-yellow-200' :
-                                        'bg-green-50 border-green-200'
-                                    }`}>
-                                    <p className={`font-semibold ${data.recruiterRiskSummary.includes('High') ? 'text-red-800' :
-                                        data.recruiterRiskSummary.includes('Moderate') ? 'text-yellow-800' :
-                                            'text-green-800'
-                                        }`}>{data.recruiterRiskSummary}</p>
-                                </div>
-                            )}
+                                            {/* 5. Commit Quality (Project Depth) */}
+                                            {data.commitQuality && (
+                                                <div className={`flex items-start gap-2 ${data.commitQuality.includes('Healthy') ? 'text-green-700' :
+                                                    data.commitQuality.includes('Shallow') ? 'text-red-700' :
+                                                        'text-blue-700'
+                                                    }`}>
+                                                    <span>•</span>
+                                                    <span>{data.commitQuality}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                         </div>
                     </div>
                 )}
@@ -484,7 +457,7 @@ export default function DashboardPage() {
                         </div>
                         <p className="text-gray-700 text-base">{data.completenessStats.message}</p>
                         <p className="text-sm text-gray-500 mt-2">
-                            Professional standard = README + Deployment/Tests + Recent Activity
+                            Professional standard = README + (Tests OR Deployment OR Community Validation) + Recent Activity
                         </p>
                     </div>
                 )}
@@ -505,7 +478,7 @@ export default function DashboardPage() {
                             <div className="bg-white border border-green-200 rounded-lg p-4 text-center">
                                 <div className="text-sm text-gray-600 mb-1">Projected Score</div>
                                 <div className="text-3xl font-bold text-green-600">
-                                    {data.scoreSimulation.projectedScore} ({data.scoreSimulation.projectedGrade})
+                                    {data.scoreSimulation.projectedScore} {data.scoreSimulation.projectedGrade && `(${data.scoreSimulation.projectedGrade})`}
                                 </div>
                             </div>
                         </div>
@@ -532,6 +505,6 @@ export default function DashboardPage() {
                 )}
 
             </div>
-        </div>
+        </div >
     );
 }

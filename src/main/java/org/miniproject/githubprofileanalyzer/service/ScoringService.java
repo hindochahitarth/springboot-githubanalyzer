@@ -44,13 +44,15 @@ public class ScoringService {
         List<String> topRepoSummary = getTopRepoSummary(originalRepos);
         
         return AnalysisResponse.ProfileMetrics.builder()
-                .username(username)
+                .username(user.getLogin())
                 .overallScore(overallScore)
                 .grade(grade)
                 .scoreBreakdown(scoreBreakdown)
                 .activityMetrics(activityMetrics)
-                .pinnedRepoSummary(pinnedRepoSummary)
+                .pinnedRepoSummary(List.of())
                 .topRepoSummary(topRepoSummary)
+                .lastActivityDate(user.getUpdatedAt()) // Real last activity from GitHub
+                .createdAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null)
                 .build();
     }
     

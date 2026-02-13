@@ -21,5 +21,5 @@ public class GitHubUser {
     private int followers;
     private int following;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private String updatedAt; // ISO 8601 string from GitHub API (e.g., "2026-02-13T14:17:51Z")
 }

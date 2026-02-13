@@ -10,6 +10,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -133,7 +134,7 @@ public class GitHubApiClient {
                 .followers((Integer) data.getOrDefault("followers", 0))
                 .following((Integer) data.getOrDefault("following", 0))
                 .createdAt(parseDateTime((String) data.get("created_at")))
-                .updatedAt(parseDateTime((String) data.get("updated_at")))
+                .updatedAt((String) data.get("updated_at")) // Keep as ISO 8601 string
                 .build();
     }
     

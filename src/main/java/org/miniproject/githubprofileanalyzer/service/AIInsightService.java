@@ -98,6 +98,52 @@ public class AIInsightService {
                 .build();
     }
     
+    // ===== ALERT METHODS (Restored) =====
+    
+    // Kept private but available for internal calls if needed
+    private String generateActivityTrend(AnalysisResponse.ProfileMetrics metrics) {
+        // Redundant with contributionConsistency, returning null to avoid display
+        return null;
+    }
+    
+    private String generateRecruiterRiskSummary(AnalysisResponse.ProfileMetrics metrics) {
+        int docScore = metrics.getScoreBreakdown().getDocumentationQuality();
+        int impactScore = metrics.getScoreBreakdown().getProjectImpact();
+        boolean isActive = metrics.getActivityMetrics().isActiveInLast90Days();
+        int overallScore = metrics.getOverallScore();
+        
+        // High performing profile check
+        if (overallScore >= 75) {
+            return "Recruiter Risk Level: Minimal (High Performing Profile)";
+        }
+        
+        List<String> risks = new ArrayList<>();
+        
+        if (docScore < 40) risks.add("weak documentation");
+        if (impactScore < 30) risks.add("low impact");
+        // Dormant is already handled in consistency check, don't duplicate here if active
+        if (!isActive && overallScore < 30) risks.add("inactive profile"); 
+        if (overallScore < 50) risks.add("low overall score");
+        
+        String riskLevel;
+        if (risks.size() >= 3) {
+            riskLevel = "High";
+        } else if (risks.size() >= 2) {
+            riskLevel = "Moderate";
+        } else if (risks.size() == 1) {
+            riskLevel = "Low";
+        } else {
+            return "Recruiter Risk Level: Minimal (strong portfolio signals)";
+        }
+        
+        if (risks.isEmpty()) {
+            return String.format("Recruiter Risk Level: %s", riskLevel);
+        } else {
+            return String.format("Recruiter Risk Level: %s (due to %s)", 
+                    riskLevel, String.join(" & ", risks));
+        }
+    }
+    
     private String generateExecutiveSummary(AnalysisResponse.ProfileMetrics metrics) {
         int score = metrics.getOverallScore();
         int repos = metrics.getActivityMetrics().getPublicRepositories();
@@ -713,45 +759,97 @@ public class AIInsightService {
         AnalysisResponse.ScoreBreakdown breakdown = metrics.getScoreBreakdown();
         int currentScore = metrics.getOverallScore();
         
-        // Find lowest scoring dimension
-        Map<String, Integer> scores = new LinkedHashMap<>();
-        scores.put("Documentation", breakdown.getDocumentationQuality());
-        scores.put("Code Structure", breakdown.getCodeStructure());
-        scores.put("Activity", breakdown.getActivityConsistency());
-        scores.put("Organization", breakdown.getRepositoryOrganization());
-        scores.put("Impact", breakdown.getProjectImpact());
-        scores.put("Depth", breakdown.getTechnicalDepth());
+        // Find the weakest dimension
+        int minScore = Math.min(breakdown.getDocumentationQuality(),
+                Math.min(breakdown.getCodeStructure(),
+                        Math.min(breakdown.getActivityConsistency(),
+                                Math.min(breakdown.getRepositoryOrganization(),
+                                        Math.min(breakdown.getProjectImpact(), breakdown.getTechnicalDepth())))));
         
-        String lowestDimension = scores.entrySet().stream()
-                .min(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse("Documentation");
+        String focusArea;
+        int currentValue;
+        int targetValue;
         
-        int lowestScore = scores.get(lowestDimension);
-        
-        // Simulate improvement: +20 points to lowest dimension
-        int improvedDimensionScore = Math.min(100, lowestScore + 20);
-        int scoreDiff = improvedDimensionScore - lowestScore;
-        
-        // Calculate weight for this dimension (all are 15-20%)
-        double weight = 0.15;
-        if (lowestDimension.equals("Activity") || lowestDimension.equals("Impact")) {
-            weight = 0.20;
+        if (minScore == breakdown.getProjectImpact()) {
+            focusArea = "Impact";
+            currentValue = breakdown.getProjectImpact();
+            targetValue = 40; // Meaningful improvement: add deployment, stars, real-world usage
+        } else if (minScore == breakdown.getDocumentationQuality()) {
+            focusArea = "Documentation";
+            currentValue = breakdown.getDocumentationQuality();
+            targetValue = 50; // Add comprehensive READMEs
+        } else if (minScore == breakdown.getTechnicalDepth()) {
+            focusArea = "Technical Depth";
+            currentValue = breakdown.getTechnicalDepth();
+            targetValue = 55; // Add tests, CI/CD, advanced patterns
+        } else if (minScore == breakdown.getCodeStructure()) {
+            focusArea = "Code Structure";
+            currentValue = breakdown.getCodeStructure();
+            targetValue = 60;
+        } else if (minScore == breakdown.getRepositoryOrganization()) {
+            focusArea = "Organization";
+            currentValue = breakdown.getRepositoryOrganization();
+            targetValue = 50;
+        } else {
+            focusArea = "Activity";
+            currentValue = breakdown.getActivityConsistency();
+            targetValue = 60;
         }
         
-        int projectedScore = currentScore + (int) (scoreDiff * weight);
+        // Calculate projected score with meaningful improvement
+        int improvement = targetValue - currentValue;
+        double weight = getWeightForDimension(focusArea);
+        // Ensure positive improvement
+        if (improvement <= 0) improvement = 10;
+        
+        int projectedScore = currentScore + (int) (improvement * weight);
+        
+        // Cap at 100
+        projectedScore = Math.min(100, projectedScore);
+        
         String projectedGrade = calculateGrade(projectedScore);
         
-        String message = String.format("If %s improves to %d+, overall score could reach %d (%s)", 
-                lowestDimension, improvedDimensionScore, projectedScore, projectedGrade);
+        String message;
+        
+        switch (focusArea) {
+            case "Impact":
+                message = String.format("If one production-ready project is built and deployed, impact score could increase to %d+, raising overall grade to %s.", 
+                        targetValue, projectedGrade);
+                break;
+            case "Documentation":
+                 message = String.format("If you add professional READMEs with setup instructions to your top 3 repos, documentation score improves to %d+, raising overall grade to %s.", 
+                        targetValue, projectedGrade);
+                break;
+            case "Technical Depth":
+                 message = String.format("If you add unit tests and CI/CD configuration to your flagship project, technical depth improves to %d+, raising overall grade to %s.", 
+                        targetValue, projectedGrade);
+                break;
+            case "Activity":
+                 message = String.format("If you maintain consistent contribution streak for 2 weeks, activity score improves to %d+, raising overall grade to %s.", 
+                        targetValue, projectedGrade);
+                break;
+            default:
+                 message = String.format("If %s improves from %d to %d+, overall score could reach %d (%s).",
+                        focusArea, currentValue, targetValue, projectedScore, projectedGrade);
+        }
         
         return AnalysisResponse.ScoreSimulation.builder()
-                .improvementArea(lowestDimension)
                 .currentScore(currentScore)
+                .focusArea(focusArea)
                 .projectedScore(projectedScore)
                 .projectedGrade(projectedGrade)
                 .message(message)
                 .build();
+    }
+    
+    private double getWeightForDimension(String dimension) {
+        return switch (dimension) {
+            case "Impact" -> 0.25;
+            case "Activity" -> 0.20;
+            case "Documentation", "Code Structure", "Technical Depth" -> 0.15;
+            case "Organization" -> 0.10;
+            default -> 0.15;
+        };
     }
     
     private String calculateGrade(int score) {
@@ -799,8 +897,9 @@ public class AIInsightService {
                 .orElse(null);
         
         if (weakest != null) {
-            return String.format("🚨 Most Critical Weakness: %s (%d/100)", 
-                    weakest.getKey(), weakest.getValue());
+            String label = metrics.getOverallScore() >= 65 ? "Primary Optimization Area" : "🚨 Most Critical Weakness";
+            return String.format("%s: %s (%d/100)", 
+                    label, weakest.getKey(), weakest.getValue());
         }
         
         return "No critical weaknesses identified";
@@ -857,67 +956,52 @@ public class AIInsightService {
                 .build();
     }
     
-    private String generateActivityTrend(AnalysisResponse.ProfileMetrics metrics) {
-        boolean isActive = metrics.getActivityMetrics().isActiveInLast90Days();
-        double avgCommits = metrics.getActivityMetrics().getAvgCommitsPerMonth();
-        
-        if (isActive && avgCommits >= 10) {
-            return "🔥 Consistent Contributor";
-        } else if (isActive && avgCommits >= 3) {
-            return "⚠ Sporadic Contributor";
-        } else {
-            return "❌ Inactive Profile";
-        }
-    }
-    
-    private String generateRecruiterRiskSummary(AnalysisResponse.ProfileMetrics metrics) {
-        int docScore = metrics.getScoreBreakdown().getDocumentationQuality();
-        int impactScore = metrics.getScoreBreakdown().getProjectImpact();
-        boolean isActive = metrics.getActivityMetrics().isActiveInLast90Days();
-        int overallScore = metrics.getOverallScore();
-        
-        List<String> risks = new ArrayList<>();
-        
-        if (docScore < 40) risks.add("weak documentation");
-        if (impactScore < 30) risks.add("low impact");
-        if (!isActive) risks.add("inactive profile");
-        if (overallScore < 50) risks.add("low overall score");
-        
-        String riskLevel;
-        if (risks.size() >= 3) {
-            riskLevel = "High";
-        } else if (risks.size() >= 2) {
-            riskLevel = "Moderate";
-        } else if (risks.size() == 1) {
-            riskLevel = "Low";
-        } else {
-            return "Recruiter Risk Level: Minimal (strong portfolio signals)";
-        }
-        
-        if (risks.isEmpty()) {
-            return String.format("Recruiter Risk Level: %s", riskLevel);
-        } else {
-            return String.format("Recruiter Risk Level: %s (due to %s)", 
-                    riskLevel, String.join(" & ", risks));
-        }
-    }
+
     
     // ===== MATURITY FEATURES =====
     
     private String generateContributionConsistency(AnalysisResponse.ProfileMetrics metrics) {
         double avgCommitsPerMonth = metrics.getActivityMetrics().getAvgCommitsPerMonth();
-        boolean isActive = metrics.getActivityMetrics().isActiveInLast90Days();
+        boolean isActive = metrics.getActivityMetrics().isActiveInLast90Days(); // 3 months
         
+        // Check for true dormancy (> 6 months inactive)
+        String lastActivityDate = metrics.getLastActivityDate();
+        boolean isDormant = false;
+        
+        if (lastActivityDate != null && !lastActivityDate.isEmpty()) {
+            try {
+                // Parse ISO 8601 timestamp (e.g., "2026-02-13T14:17:51Z")
+                java.time.Instant lastActivity = java.time.Instant.parse(lastActivityDate);
+                java.time.Instant now = java.time.Instant.now();
+                
+                long monthsInactive = java.time.temporal.ChronoUnit.MONTHS.between(
+                    lastActivity.atZone(java.time.ZoneId.systemDefault()), 
+                    now.atZone(java.time.ZoneId.systemDefault())
+                );
+                
+                if (monthsInactive > 6) {
+                    isDormant = true;
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse last activity date: {}", lastActivityDate);
+            }
+        }
+        
+        if (isDormant) {
+             return "❌ Dormant Profile";
+        }
+
         // Estimate months with activity (simplified heuristic)
+        // Adjusted logic for consistency
         int estimatedActiveMonths;
-        if (avgCommitsPerMonth >= 15) {
-            estimatedActiveMonths = 12; // Highly consistent
-        } else if (avgCommitsPerMonth >= 8) {
-            estimatedActiveMonths = 9; // Moderate
-        } else if (avgCommitsPerMonth >= 4) {
-            estimatedActiveMonths = 6; // Inconsistent
+        if (avgCommitsPerMonth >= 10) {
+            estimatedActiveMonths = 10;
+        } else if (avgCommitsPerMonth >= 6) {
+            estimatedActiveMonths = 6;
+        } else if (avgCommitsPerMonth >= 3) {
+            estimatedActiveMonths = 3;
         } else {
-            estimatedActiveMonths = 2; // Dormant
+            estimatedActiveMonths = 2;
         }
         
         if (estimatedActiveMonths >= 10) {
@@ -927,7 +1011,8 @@ public class AIInsightService {
         } else if (estimatedActiveMonths >= 3) {
             return "⚠ Inconsistent Activity";
         } else {
-            return "❌ Dormant Profile";
+            // If not dormant (>6mo inactive) but low commits, it's just sporadic/low activity
+            return "⚠ Low Activity"; 
         }
     }
     
@@ -938,15 +1023,18 @@ public class AIInsightService {
             return "No clear language focus";
         }
         
-        // Simplified heuristic: if only 1-2 languages, it's focused
+        // Improved logic: less harsh, more nuanced
         if (languages.size() == 1) {
             return String.format("🎯 Clear Primary Stack (%s)", languages.get(0));
         } else if (languages.size() == 2) {
-            return String.format("🎯 Focused Stack (%s, %s)", languages.get(0), languages.get(1));
-        } else if (languages.size() <= 4) {
-            return "🧪 Exploratory Profile (multiple stacks)";
+            return String.format("🎯 Focused Dual-Stack (%s, %s)", languages.get(0), languages.get(1));
+        } else if (languages.size() == 3) {
+            return String.format("🔧 Multi-Stack Engineer (%s, %s, %s)", 
+                    languages.get(0), languages.get(1), languages.get(2));
+        } else if (languages.size() <= 5) {
+            return "🧪 Exploratory Profile (diverse tech exposure)";
         } else {
-            return "🧱 Fragmented Portfolio (no dominant stack)";
+            return "🧱 Fragmented Portfolio (too many minor languages)";
         }
     }
     
@@ -1008,67 +1096,81 @@ public class AIInsightService {
     // ===== FINAL POLISH FEATURES =====
     
     private String generateProfileAge(AnalysisResponse.ProfileMetrics metrics) {
-        // Simplified: estimate based on total repos and activity
-        // In a real implementation, you'd get account creation date from GitHub API
-        int totalRepos = metrics.getActivityMetrics().getPublicRepositories();
-        double avgCommitsPerMonth = metrics.getActivityMetrics().getAvgCommitsPerMonth();
+        String createdAtStr = metrics.getCreatedAt();
         
-        // Rough heuristic: more repos + consistent activity = older account
-        int estimatedYears;
-        int estimatedMonths;
-        
-        if (totalRepos >= 50 && avgCommitsPerMonth >= 10) {
-            estimatedYears = 5;
-            estimatedMonths = 6;
-        } else if (totalRepos >= 30 && avgCommitsPerMonth >= 5) {
-            estimatedYears = 3;
-            estimatedMonths = 8;
-        } else if (totalRepos >= 15) {
-            estimatedYears = 2;
-            estimatedMonths = 4;
-        } else if (totalRepos >= 5) {
-            estimatedYears = 1;
-            estimatedMonths = 2;
-        } else {
-            estimatedYears = 0;
-            estimatedMonths = 6;
+        if (createdAtStr != null) {
+            try {
+                // Parse LocalDateTime string (e.g. "2013-05-14T08:00") or ISO Instant
+                java.time.LocalDateTime createdAt = java.time.LocalDateTime.parse(createdAtStr);
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                
+                long monthsDiff = java.time.temporal.ChronoUnit.MONTHS.between(createdAt, now);
+                long years = monthsDiff / 12;
+                long months = monthsDiff % 12;
+                
+                if (years > 0) {
+                    return String.format("📅 Account Age: %d years, %d months", years, months);
+                } else {
+                    return String.format("📅 Account Age: %d months", months);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse created at date: {}", createdAtStr);
+            }
         }
-        
-        if (estimatedYears > 0) {
-            return String.format("📅 Account Age: ~%d years, %d months", estimatedYears, estimatedMonths);
-        } else {
-            return String.format("📅 Account Age: ~%d months", estimatedMonths);
-        }
+
+        return "📅 Account Age: Unknown";
     }
     
     private String generateLastCommitRecency(AnalysisResponse.ProfileMetrics metrics) {
-        boolean isActive = metrics.getActivityMetrics().isActiveInLast90Days();
-        double avgCommitsPerMonth = metrics.getActivityMetrics().getAvgCommitsPerMonth();
+        String lastActivityDate = metrics.getLastActivityDate();
         
-        // Heuristic based on activity level
-        String recency;
-        String status;
-        
-        if (avgCommitsPerMonth >= 15) {
-            recency = "3 days ago";
-            status = "✅";
-        } else if (avgCommitsPerMonth >= 8 && isActive) {
-            recency = "1 week ago";
-            status = "✅";
-        } else if (avgCommitsPerMonth >= 4 && isActive) {
-            recency = "2 weeks ago";
-            status = "✅";
-        } else if (isActive) {
-            recency = "45 days ago";
-            status = "⚠";
-        } else if (avgCommitsPerMonth >= 2) {
-            recency = "3 months ago";
-            status = "⚠";
-        } else {
-            recency = "6+ months ago";
-            status = "❌";
+        if (lastActivityDate == null || lastActivityDate.isEmpty()) {
+            return "⏰ Last Activity: Unknown";
         }
         
-        return String.format("⏰ Last Activity: %s %s", recency, status);
+        try {
+            // Parse ISO 8601 timestamp from GitHub (e.g., "2026-02-13T14:17:51Z")
+            java.time.Instant lastActivity = java.time.Instant.parse(lastActivityDate);
+            java.time.Instant now = java.time.Instant.now();
+            
+            long daysDiff = java.time.Duration.between(lastActivity, now).toDays();
+            
+            String recency;
+            String status;
+            
+            if (daysDiff == 0) {
+                recency = "today";
+                status = "✅";
+            } else if (daysDiff == 1) {
+                recency = "1 day ago";
+                status = "✅";
+            } else if (daysDiff <= 7) {
+                recency = String.format("%d days ago", daysDiff);
+                status = "✅";
+            } else if (daysDiff <= 14) {
+                recency = String.format("%d days ago", daysDiff);
+                status = "✅";
+            } else if (daysDiff <= 30) {
+                recency = String.format("%d days ago", daysDiff);
+                status = "⚠";
+            } else if (daysDiff <= 90) {
+                long weeks = daysDiff / 7;
+                recency = String.format("%d weeks ago", weeks);
+                status = "⚠";
+            } else if (daysDiff <= 180) {
+                long months = daysDiff / 30;
+                recency = String.format("%d months ago", months);
+                status = "⚠";
+            } else {
+                long months = daysDiff / 30;
+                recency = String.format("%d+ months ago", months);
+                status = "❌";
+            }
+            
+            return String.format("⏰ Last Activity: %s %s", recency, status);
+        } catch (Exception e) {
+            // Fallback to heuristic if parsing fails
+            return "⏰ Last Activity: Recently";
+        }
     }
 }
