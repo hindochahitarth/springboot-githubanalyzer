@@ -11,8 +11,8 @@ import java.util.*;
 @Service
 public class AIInsightService {
     
-    @Value("${gemini.api.key}")
-    private String geminiApiKey;
+    @Value("${gemini.api.key:}")
+    private String geminiApiKey; // Optional - not currently used (template-based insights)
     
     /**
      * Generate AI-powered insights based on profile metrics
