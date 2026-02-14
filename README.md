@@ -2,6 +2,9 @@
 
 An AI-powered tool designed to evaluate GitHub profiles for recruitment potential, providing detailed scoring, risk assessment, and actionable growth insights.
 
+## 🌐 Live Demo
+**[Try it now!](https://githubanalyzerhackathon.netlify.app/)** 🚀
+
 ## 🎥 Demo Video
 [Watch the Demo on Google Drive](https://drive.google.com/drive/folders/11hz2kRZ6f2BVnDah6B9w4ksk8AaajB49?usp=drive_link)
 
